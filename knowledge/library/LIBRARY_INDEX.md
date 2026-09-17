@@ -4,10 +4,10 @@ Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, and 
 
 ## Executive Corpus Summary
 
-- **Total Unique Downloaded Documents**: 87
-- **Born-Digital / Searchable Text Layer (YES)**: 87
-- **Scanned / OCR Needed (NO)**: 0
-- **Tier Breakdown**: Tier A: 69, Tier B: 17, Tier C: 1
+- **Total Unique Downloaded Documents**: 89
+- **Born-Digital / Searchable Text Layer (YES)**: 88
+- **Scanned / OCR Needed (NO)**: 1
+- **Tier Breakdown**: Tier A: 71, Tier B: 17, Tier C: 1
 - **Identified Open Gaps**: 1
 - **WANT_USER_COPY (Proprietary / Closed)**: 7
 
@@ -15,7 +15,7 @@ Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, and 
 
 | Domain Directory | Topic Name | Verified Docs | Coverage Status |
 |---|---|---|---|
-| `01_engine_physics` | 1. Engine fundamentals | 4 | 🟢 Strong |
+| `01_engine_physics` | 1. Engine fundamentals | 6 | 🟢 Strong |
 | `02_diesel_combustion` | 2. Diesel combustion | 4 | 🟢 Strong |
 | `03_injection` | 3. Diesel injection | 4 | 🟢 Strong |
 | `04_pumpe_duse` | 4. Pumpe-Düse / UIS | 5 | 🟢 Strong |
@@ -124,6 +124,8 @@ Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, and 
 | 85 | **EDC16 Thermal Protection: Simulated Exhaust Gas Temperature Model, Fuel Derating & Protection Maps** | TDI Calibration Engineering Project | 2026 | 1 | Tier A | YES | [`14_calibration_methodology/EDC16_Thermal_Protection_and_EGT_Derating.md`](14_calibration_methodology/EDC16_Thermal_Protection_and_EGT_Derating.md) |
 | 86 | **VW SSP 840193: 3.0-Liter V6 TDI Clean Diesel with Bosch EDC 17 CP24 Engine Management** | Volkswagen Group of America | 2009 | 111 | Tier A | YES | [`09_edc17/VW_SSP_840193_3.0L_V6_TDI_Clean_Diesel_EDC17.pdf`](09_edc17/VW_SSP_840193_3.0L_V6_TDI_Clean_Diesel_EDC17.pdf) |
 | 87 | **Ross-Tech VCDS & VAS Diagnostic Engineering Guide: VAG 1.9 TDI PD (EDC16U34)** | Ross-Tech & VAG Diagnostic Engineering | 2026 | 5 | Tier A | YES | [`12_vcds/Ross_Tech_VCDS_EDC16U34_Measuring_Blocks_and_Diagnostics_Guide.md`](12_vcds/Ross_Tech_VCDS_EDC16U34_Measuring_Blocks_and_Diagnostics_Guide.md) |
+| 88 | **Internal Combustion Engine Fundamentals (Complete 1st Edition)** | John B. Heywood (MIT) | 1988 | 481 | Tier A | NO | [`01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Complete.pdf`](01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Complete.pdf) |
+| 89 | **Internal Combustion Engine Fundamentals (Digitized Edition with Text Layer & Interactive TOC)** | John B. Heywood (MIT) | 1988 | 1382 | Tier A | YES | [`01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Digital_Text.pdf`](01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Digital_Text.pdf) |
 
 ## WANT_USER_COPY (Proprietary / Commercial / Closed Sources)
 
