@@ -7,6 +7,7 @@ import hashlib
 import requests
 from typing import Dict, Any, Optional, List
 from pypdf import PdfReader
+import zipfile
 
 if sys.platform == "win32":
     try:
@@ -17,6 +18,7 @@ if sys.platform == "win32":
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 LIBRARY_DIR = os.path.join(BASE_DIR, "knowledge", "library")
+DRAFTS_DIR = os.path.join(BASE_DIR, "knowledge", "drafts")
 REGISTRY_PATH = os.path.join(LIBRARY_DIR, "library_registry.json")
 INDEX_PATH = os.path.join(LIBRARY_DIR, "LIBRARY_INDEX.md")
 
@@ -85,25 +87,23 @@ def inspect_pdf(filepath: str) -> Dict[str, Any]:
     try:
         reader = PdfReader(filepath)
         num_pages = len(reader.pages)
-        sample_chars = 0
-        pages_with_text = 0
-        check_pages = min(25, num_pages)
-        for i in range(check_pages):
-            try:
-                txt = reader.pages[i].extract_text() or ""
-                chars = len(txt.strip())
-                sample_chars += chars
-                if chars > 50:
-                    pages_with_text += 1
-            except Exception:
-                pass
+        check_pages = min(8, num_pages)
+        chars = [len(reader.pages[i].extract_text() or "") for i in range(check_pages)]
+        cpp = sum(chars) / max(1, check_pages)
+        cpp_int = round(cpp)
         
-        has_text_layer = (pages_with_text >= max(1, check_pages // 4)) or (sample_chars > 300)
+        if cpp_int >= 300:
+            status = "GOOD"
+        elif cpp_int >= 50:
+            status = "THIN"
+        else:
+            status = "NONE"
+
         return {
             "valid_pdf": True,
             "num_pages": num_pages,
-            "text_layer": has_text_layer,
-            "sample_chars": sample_chars,
+            "text_layer": status,
+            "chars_per_page": cpp_int,
             "pages_checked": check_pages
         }
     except Exception as e:
@@ -111,7 +111,8 @@ def inspect_pdf(filepath: str) -> Dict[str, Any]:
             "valid_pdf": False,
             "error": str(e),
             "num_pages": 0,
-            "text_layer": False
+            "text_layer": "NONE",
+            "chars_per_page": 0
         }
 
 def expand_multilingual_queries(topic_key: str, target_langs: Optional[List[str]] = None) -> Dict[str, List[str]]:
@@ -138,24 +139,35 @@ def save_registry(data: Dict[str, Any]) -> None:
 
 def generate_index_markdown():
     data = load_registry()
-    records = data.get("records", [])
+    all_records = data.get("records", [])
     gaps = data.get("gaps", [])
     wants = data.get("want_user_copy", [])
 
-    total_downloaded = len(records)
-    text_layer_count = sum(1 for r in records if r.get("text_layer") == "YES")
-    scanned_count = sum(1 for r in records if r.get("text_layer") == "NO")
+    primary_records = [r for r in all_records if r.get("obtainability") != "PROJECT_DRAFT"]
+    draft_records = [r for r in all_records if r.get("obtainability") == "PROJECT_DRAFT"]
+
+    good_text_count = sum(1 for r in primary_records if r.get("text_layer") == "GOOD")
+    thin_text_count = sum(1 for r in primary_records if r.get("text_layer") == "THIN")
+    none_text_count = sum(1 for r in primary_records if r.get("text_layer") == "NONE")
     
     tier_counts: Dict[str, int] = {}
     lang_counts: Dict[str, int] = {}
+    sys_counts: Dict[str, int] = {}
+    appl_counts: Dict[int, int] = {}
     oem_native_count = 0
 
-    for r in records:
+    for r in primary_records:
         t = r.get("authority_tier", "Tier C")
         tier_counts[t] = tier_counts.get(t, 0) + 1
         
         lang = r.get("original_language") or r.get("language", "en")
         lang_counts[lang] = lang_counts.get(lang, 0) + 1
+
+        s = r.get("system_match", "N-A")
+        sys_counts[s] = sys_counts.get(s, 0) + 1
+
+        ap = r.get("applicability", 2)
+        appl_counts[ap] = appl_counts.get(ap, 0) + 1
         
         is_oem = r.get("is_oem_native", False)
         pub_lower = str(r.get("publisher", "")).lower()
@@ -185,7 +197,7 @@ def generate_index_markdown():
     ]
 
     domain_counts = {d_folder: 0 for d_folder, _ in domains}
-    for r in records:
+    for r in primary_records:
         folder = r.get("folder", "")
         if folder in domain_counts:
             domain_counts[folder] += 1
@@ -193,13 +205,16 @@ def generate_index_markdown():
     md = []
     md.append("# Technical Research Library: ECU Calibration & Diesel Engine Management")
     md.append("")
-    md.append("Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, and doctoral dissertations.")
+    md.append("Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, patents, and doctoral dissertations.")
+    md.append("> **CRITICAL REPOSITORY INVARIANT**: Large binary files (`*.pdf`, `*.epub`) are strictly **gitignored** (`.gitignore`) to avoid bloating the git history and comply with licensing terms. All files remain intact locally on disk. Internal project drafts are stored exclusively in `knowledge/drafts/` with `authority_tier=\"DRAFT\"`.")
     md.append("")
     md.append("## Executive Corpus Summary")
     md.append("")
-    md.append(f"- **Total Unique Downloaded Documents**: {total_downloaded}")
-    md.append(f"- **Born-Digital / Searchable Text Layer (YES)**: {text_layer_count}")
-    md.append(f"- **Scanned / OCR Needed (NO)**: {scanned_count}")
+    md.append(f"- **Total Primary External Documents**: {len(primary_records)}")
+    md.append(f"- **Internal Working Drafts (`knowledge/drafts/`)**: {len(draft_records)}")
+    md.append(f"- **Text Layer Quality**: Born-Digital / High OCR (`GOOD` >=300 cpp): **{good_text_count}** | Thin (`THIN` 50-299 cpp): **{thin_text_count}** | Scanned / No OCR (`NONE` <50 cpp): **{none_text_count}**")
+    md.append(f"- **Fuel System Alignment**: Pumpe-Düse (`PD`): **{sys_counts.get('PD', 0)}** | Common Rail (`CR`): **{sys_counts.get('CR', 0)}** | Distributor (`VP37`): **{sys_counts.get('VP37', 0)}** | In-Line (`INLINE`): **{sys_counts.get('INLINE', 0)}** | General (`N-A`): **{sys_counts.get('N-A', 0)}**")
+    md.append(f"- **Target Applicability**: Level 5 (Exact Vehicle/Dump): **{appl_counts.get(5, 0)}** | Level 4 (EDC16U34/BLS/BV39): **{appl_counts.get(4, 0)}** | Level 3 (Generic EDC16/PD): **{appl_counts.get(3, 0)}** | Level 2 (Generic Diesel/Garrett): **{appl_counts.get(2, 0)}** | Level 1 (Other Fuel Systems): **{appl_counts.get(1, 0)}**")
     
     tier_str = ", ".join([f"{k}: {v}" for k, v in sorted(tier_counts.items())])
     md.append(f"- **Tier Breakdown**: {tier_str if tier_str else 'None'}")
@@ -210,9 +225,8 @@ def generate_index_markdown():
         lang_str_items.append(f"{badge}: {count}")
     md.append(f"- **Linguistic Corpus Distribution**: {', '.join(lang_str_items)}")
     md.append(f"- **German OEM Native Ground Truth (Bosch / VAG)**: {oem_native_count} verified documents")
-    
+    md.append(f"- **WANT_USER_COPY (Proprietary / Closed Literature)**: {len(wants)}")
     md.append(f"- **Identified Open Gaps**: {len(gaps)}")
-    md.append(f"- **WANT_USER_COPY (Proprietary / Closed)**: {len(wants)}")
     md.append("")
     md.append("## Domain Coverage Matrix")
     md.append("")
@@ -224,18 +238,21 @@ def generate_index_markdown():
         md.append(f"| `{d_folder}` | {d_name} | {c} | {status} |")
 
     md.append("")
-    md.append("## Catalog of Downloaded Documents")
+    md.append("## Catalog of Verified Primary Technical Documents")
     md.append("")
-    md.append("| # | Title | Author(s) | Year | Pages | Tier | Lang | Text Layer | Folder / File |")
-    md.append("|---|---|---|---|---|---|---|---|---|")
-    for idx, r in enumerate(records, 1):
+    md.append("| # | Title | Author(s) | Year | Sys | Appl | Tier | Lang | Text Layer (cpp) | License | Folder / File |")
+    md.append("|---|---|---|---|---|---|---|---|---|---|---|")
+    for idx, r in enumerate(primary_records, 1):
         rel_path = os.path.join(r.get("folder", ""), r.get("filename", "")).replace("\\", "/")
         title = r.get("title", "Unknown").replace("|", "-")
         authors = r.get("authors", "Unknown").replace("|", "-")
         year = r.get("year", "N/A")
-        pages = r.get("pages", "N/A")
+        sys_m = r.get("system_match", "N-A")
+        appl = r.get("applicability", 2)
         tier = r.get("authority_tier", "Tier B")
-        tl = r.get("text_layer", "YES")
+        tl = r.get("text_layer", "GOOD")
+        cpp = r.get("chars_per_page", 0)
+        lic = r.get("license_status", "public")
         
         lang_code = r.get("original_language") or r.get("language", "en")
         is_oem = r.get("is_oem_native", False)
@@ -255,20 +272,46 @@ def generate_index_markdown():
             if src_ed:
                 title = f"{title} *(Trans. of {src_ed})*"
 
-        md.append(f"| {idx} | **{title}** | {authors} | {year} | {pages} | {tier} | {lang_display} | {tl} | [`{rel_path}`]({rel_path}) |")
+        tl_display = f"{tl} ({cpp})"
+        if tl == "NONE":
+            tl_display = f"⚠️ **NONE ({cpp})**"
+        elif tl == "THIN":
+            tl_display = f"🟡 THIN ({cpp})"
+
+        appl_display = f"**{appl}**" if appl >= 4 else str(appl)
+
+        md.append(f"| {idx} | **{title}** | {authors} | {year} | `{sys_m}` | {appl_display} | {tier} | {lang_display} | {tl_display} | `{lic}` | [`{rel_path}`]({rel_path}) |")
+
+    if draft_records:
+        md.append("")
+        md.append("## Internal Project Engineering Drafts (`knowledge/drafts/`)")
+        md.append("")
+        md.append("> [!NOTE]")
+        md.append("> These files represent project syntheses, working hypotheses, and mathematical derivations created internally. They carry `authority_tier=\"DRAFT\"` and `obtainability=\"PROJECT_DRAFT\"` and are NOT external primary evidence.")
+        md.append("")
+        md.append("| # | Draft Title | Topics | Appl | Path |")
+        md.append("|---|---|---|---|---|")
+        for idx, r in enumerate(draft_records, 1):
+            t = r.get("title", "").replace("|", "-")
+            topics = ", ".join(r.get("topics", []))
+            ap = r.get("applicability", 4)
+            fn = r.get("filename", "")
+            md.append(f"| {idx} | **{t}** | {topics} | {ap} | [`knowledge/drafts/{fn}`](../drafts/{fn}) |")
 
     if wants:
         md.append("")
-        md.append("## WANT_USER_COPY (Proprietary / Commercial / Closed Sources)")
+        md.append("## WANT_USER_COPY (Proprietary / Closed Literature)")
         md.append("")
-        md.append("| Item | Reason / Required Material | Target Vehicle / ECU | Status |")
-        md.append("|---|---|---|---|")
+        md.append("| Item | System | Appl | Reason / Required Material | Target Vehicle / ECU | Status |")
+        md.append("|---|---|---|---|---|---|")
         for w in wants:
             item_title = w.get("title", "").replace("|", "-")
+            sys_m = w.get("system_match", "N-A")
+            ap = w.get("applicability", 3)
             reason = w.get("reason", "").replace("|", "-")
             target = w.get("target", "").replace("|", "-")
             status = w.get("status", "User Input Requested").replace("|", "-")
-            md.append(f"| **{item_title}** | {reason} | {target} | {status} |")
+            md.append(f"| **{item_title}** | `{sys_m}` | {ap} | {reason} | {target} | {status} |")
 
     if gaps:
         md.append("")
@@ -298,7 +341,10 @@ def download_document(
     doc_id: str = "",
     language: str = "en",
     notes: str = "",
-    applicability: str = "General / VW PD EDC16",
+    applicability: int = 3,
+    system_match: str = "N-A",
+    license_status: str = "public",
+    obtainability: str = "HAVE_LOCAL",
     timeout: int = 50,
     original_language: str = "en",
     canonical_title: str = "",
@@ -349,14 +395,16 @@ def download_document(
     # Verify content
     fmt = "PDF"
     num_pages = 0
-    has_text = False
+    tl_status = "NONE"
+    cpp = 0
     with open(target_path, "rb") as f:
         head = f.read(1024)
         if not head.startswith(b"%PDF-"):
             if b"<html" in head.lower() or b"<!doctype html" in head.lower():
                 fmt = "HTML"
                 num_pages = 1
-                has_text = True
+                tl_status = "GOOD"
+                cpp = 1000
             else:
                 print(f"File is not valid PDF or HTML: {head[:64]}")
                 try:
@@ -374,7 +422,8 @@ def download_document(
                     pass
                 return None
             num_pages = info["num_pages"]
-            has_text = info["text_layer"]
+            tl_status = info["text_layer"]
+            cpp = info["chars_per_page"]
 
     sha256 = get_sha256(target_path)
     reg = load_registry()
@@ -401,11 +450,15 @@ def download_document(
         "pages": num_pages,
         "source_url": url,
         "file_format": fmt,
-        "text_layer": "YES" if has_text else "NO",
+        "text_layer": tl_status,
+        "chars_per_page": cpp,
         "full_document": "YES",
         "authority_tier": authority_tier,
         "topics": topics,
         "applicability": applicability,
+        "system_match": system_match,
+        "license_status": license_status,
+        "obtainability": obtainability,
         "folder": folder,
         "filename": filename,
         "sha256": sha256,
@@ -427,124 +480,39 @@ def add_gap(topic: str, document: str):
     save_registry(reg)
     generate_index_markdown()
 
-def add_want_user_copy(title: str, reason: str, target: str, status: str = "User Input Requested"):
+def add_want_user_copy(
+    title: str,
+    reason: str,
+    target: str,
+    system_match: str = "N-A",
+    applicability: int = 3,
+    isbn: str = "",
+    publisher: str = "",
+    status: str = "User Input Requested"
+):
     reg = load_registry()
     for w in reg.get("want_user_copy", []):
         if w.get("title") == title:
             w["status"] = status
+            w["system_match"] = system_match
+            w["applicability"] = applicability
             save_registry(reg)
             generate_index_markdown()
             return
-    reg["want_user_copy"].append({"title": title, "reason": reason, "target": target, "status": status})
-    save_registry(reg)
-    generate_index_markdown()
-
-def register_local_file(
-    source_path: str,
-    folder: str,
-    filename: str,
-    title: str,
-    authors: str,
-    year: str,
-    publisher: str,
-    authority_tier: str,
-    topics: List[str],
-    doc_id: str = "",
-    language: str = "en",
-    notes: str = "",
-    applicability: str = "General / VW PD EDC16",
-    copy_file: bool = True,
-    original_language: str = "en",
-    canonical_title: str = "",
-    translation_provenance: Optional[Dict[str, Any]] = None,
-    is_oem_native: bool = False,
-    isbn_multilingual: Optional[Dict[str, str]] = None,
-    edition_number: str = ""
-) -> Optional[Dict[str, Any]]:
-    target_dir = os.path.join(LIBRARY_DIR, folder)
-    os.makedirs(target_dir, exist_ok=True)
-    target_path = os.path.join(target_dir, filename)
-
-    if copy_file and os.path.abspath(source_path) != os.path.abspath(target_path):
-        import shutil
-        shutil.copy2(source_path, target_path)
-
-    ext = os.path.splitext(target_path)[1].lower()
-    fmt = "PDF"
-    num_pages = 1
-    has_text = True
-
-    if ext == ".pdf":
-        info = inspect_pdf(target_path)
-        if not info["valid_pdf"]:
-            print(f"Invalid PDF: {target_path}")
-            return None
-        fmt = "PDF"
-        num_pages = info["num_pages"]
-        has_text = info["text_layer"]
-    elif ext in [".md", ".markdown"]:
-        fmt = "Markdown"
-        with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = len(f.readlines())
-        num_pages = max(1, (lines + 39) // 40)
-        has_text = True
-    elif ext in [".txt", ".lbl"]:
-        fmt = "Text"
-        with open(target_path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = len(f.readlines())
-        num_pages = max(1, (lines + 39) // 40)
-        has_text = True
-    elif ext == ".epub":
-        fmt = "EPUB"
-        import zipfile
-        try:
-            with zipfile.ZipFile(target_path, 'r') as z:
-                html_count = len([f for f in z.namelist() if f.endswith(('.html', '.xhtml', '.htm'))])
-                num_pages = max(1, html_count)
-        except Exception:
-            num_pages = 962
-        has_text = True
-
-    sha256 = get_sha256(target_path)
-    reg = load_registry()
-
-    for existing in reg.get("records", []):
-        if existing.get("sha256") == sha256:
-            print(f"Duplicate SHA256 with {existing.get('filename')}. Skipping.")
-            return existing
-
-    record = {
+    reg["want_user_copy"].append({
         "title": title,
-        "authors": authors,
-        "year": str(year),
+        "isbn": isbn,
         "publisher": publisher,
-        "doc_id": doc_id,
-        "language": language,
-        "original_language": original_language or language,
-        "canonical_title": canonical_title or title,
-        "edition_number": edition_number,
-        "is_oem_native": is_oem_native,
-        "translation_provenance": translation_provenance,
-        "isbn_multilingual": isbn_multilingual or {},
-        "pages": num_pages,
-        "source_url": f"local://{os.path.basename(source_path)}",
-        "file_format": fmt,
-        "text_layer": "YES" if has_text else "NO",
-        "full_document": "YES",
-        "authority_tier": authority_tier,
-        "topics": topics,
-        "applicability": applicability,
-        "folder": folder,
-        "filename": filename,
-        "sha256": sha256,
-        "notes": notes
-    }
-
-    reg["records"].append(record)
+        "reason": reason,
+        "target": target,
+        "status": status,
+        "obtainability": "WANT_USER_COPY",
+        "license_status": "paid_not_owned",
+        "system_match": system_match,
+        "applicability": applicability
+    })
     save_registry(reg)
     generate_index_markdown()
-    print(f"Successfully registered local file: {filename} ({num_pages} pages, text_layer={record['text_layer']})")
-    return record
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
