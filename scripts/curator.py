@@ -1,10 +1,19 @@
-# Literature Curator & Registry Manager
+﻿# Literature Curator & Registry Manager
+# Multilingual & Alternate Editions Acquisition Protocol
 import os
+import sys
 import json
 import hashlib
 import requests
 from typing import Dict, Any, Optional, List
 from pypdf import PdfReader
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 LIBRARY_DIR = os.path.join(BASE_DIR, "knowledge", "library")
@@ -12,6 +21,58 @@ REGISTRY_PATH = os.path.join(LIBRARY_DIR, "library_registry.json")
 INDEX_PATH = os.path.join(LIBRARY_DIR, "LIBRARY_INDEX.md")
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+LANG_BADGES = {
+    "en": "🇬🇧 EN",
+    "de": "🇩🇪 DE",
+    "ru": "🇷🇺 RU",
+    "pl": "🇵🇱 PL",
+    "it": "🇮🇹 IT",
+    "fr": "🇫🇷 FR",
+    "es": "🇪🇸 ES",
+    "zh": "🇨🇳 ZH",
+    "ja": "🇯🇵 JA",
+    "multilingual": "🌐 Multi"
+}
+
+MULTILINGUAL_DOMAIN_TERMS = {
+    "turbocharging_vtg": {
+        "en": ["turbocharging internal combustion engines", "variable turbine geometry VTG", "VNT boost control", "wastegate dynamics", "Watson Janota turbocharging", "Hiereth Prenninger charging"],
+        "de": ["Aufladung der Verbrennungskraftmaschine", "Abgasturbolader VTG", "variable Turbinengeometrie", "Ladedruckregelung", "Hiereth Prenninger Aufladung"],
+        "ru": ["турбонаддув двигателей внутреннего сгорания", "турбокомпрессор с изменяемой геометрией", "регулирование давления наддува", "турбина с изменяемой геометрией VNT"],
+        "pl": ["doładowanie silników spalinowych", "turbosprężarka zmienna geometria VNT", "sterowanie ciśnieniem doładowania"],
+        "fr": ["suralimentation des moteurs thermiques", "turbocompresseur à géométrie variable", "régulation pression suralimentation"],
+        "es": ["sobrealimentación de motores de combustión interna", "turbocompresor geometría variable", "control de sobrealimentación"],
+        "it": ["sovralimentazione motori combustione interna", "turbocompressore a geometria variabile", "controllo sovralimentazione"],
+        "zh": ["内燃机增压", "可变截面涡轮增压器 VTG", "废气涡轮增压控制"]
+    },
+    "diesel_engine_management_edc": {
+        "en": ["Diesel Engine Management Systems and Components", "Electronic Diesel Control EDC16", "Unit Injector System UIS Pumpe Duse", "Bosch diesel handbook"],
+        "de": ["Dieselmotor-Management Systeme und Komponenten", "Elektronische Dieselregelung EDC16", "Pumpe-Düse-System UIS PDE", "Konrad Reif Bosch Diesel"],
+        "ru": ["Системы управления дизельными двигателями", "электронное управление дизелями EDC16", "насос-форсунка UIS", "справочник Bosch дизель"],
+        "pl": ["sterowanie silników z zapłonem samoczynnym", "elektroniczne sterowanie EDC", "pompowtryskiwacze UIS Bosch"],
+        "fr": ["gestion des moteurs diesel", "commande électronique diesel EDC", "injecteur-pompe UIS"],
+        "es": ["gestión del motor diésel", "control electrónico diésel EDC", "sistema inyector bomba UIS"],
+        "it": ["gestione motore diesel", "controllo elettronico diesel EDC", "iniettore pompa UIS"],
+        "zh": ["柴油机管理系统", "柴油机电子控制系统 EDC", "泵喷嘴系统 UIS"]
+    },
+    "automotive_handbook": {
+        "en": ["Bosch Automotive Handbook", "Robert Bosch Automotive Handbook 6th 7th 8th 9th 10th", "Bentley Bosch Handbook"],
+        "de": ["Kraftfahrtechnisches Taschenbuch Bosch", "Bosch Fachinformation Automobil", "Vieweg Teubner Kraftfahrtechnisches"],
+        "ru": ["Автомобильный справочник Bosch", "За рулем автомобильный справочник Бош", "Бош справочник автомобилей"],
+        "pl": ["Poradnik techniczny Bosch", "Samochodowy poradnik techniczny Bosch"],
+        "fr": ["Mémento de technologie automobile Bosch", "Cahier technique automobile Bosch"],
+        "es": ["Manual de la técnica del automóvil Bosch"],
+        "it": ["Manuale dell'automobile Bosch", "Manuale della tecnica automobilistica Bosch"],
+        "zh": ["博世汽车工程手册", "汽车工程手册 博世"]
+    },
+    "engine_control_modeling": {
+        "en": ["Introduction to Modeling and Control of Internal Combustion Engine Systems", "Guzzella Onder engine control", "mean value engine model MVEM"],
+        "de": ["Modellierung und Regelung von Verbrennungsmotoren", "Guzzella Onder Motorsteuerung", "Regelungstechnik Verbrennungskraftmaschinen"],
+        "ru": ["моделирование и управление двигателями внутреннего сгорания", "математические модели ДВС Гуццелла"],
+        "zh": ["内燃机系统建模与控制导论", "内燃机控制建模"]
+    }
+}
 
 def get_sha256(filepath: str) -> str:
     h = hashlib.sha256()
@@ -53,6 +114,14 @@ def inspect_pdf(filepath: str) -> Dict[str, Any]:
             "text_layer": False
         }
 
+def expand_multilingual_queries(topic_key: str, target_langs: Optional[List[str]] = None) -> Dict[str, List[str]]:
+    terms = MULTILINGUAL_DOMAIN_TERMS.get(topic_key, {})
+    if not terms:
+        return {}
+    if target_langs is None:
+        target_langs = ["de", "en", "ru", "pl", "es", "fr", "it", "zh"]
+    return {lang: terms[lang] for lang in target_langs if lang in terms}
+
 def load_registry() -> Dict[str, Any]:
     if os.path.exists(REGISTRY_PATH):
         try:
@@ -76,10 +145,24 @@ def generate_index_markdown():
     total_downloaded = len(records)
     text_layer_count = sum(1 for r in records if r.get("text_layer") == "YES")
     scanned_count = sum(1 for r in records if r.get("text_layer") == "NO")
-    tier_counts = {}
+    
+    tier_counts: Dict[str, int] = {}
+    lang_counts: Dict[str, int] = {}
+    oem_native_count = 0
+
     for r in records:
         t = r.get("authority_tier", "Tier C")
         tier_counts[t] = tier_counts.get(t, 0) + 1
+        
+        lang = r.get("original_language") or r.get("language", "en")
+        lang_counts[lang] = lang_counts.get(lang, 0) + 1
+        
+        is_oem = r.get("is_oem_native", False)
+        pub_lower = str(r.get("publisher", "")).lower()
+        if not is_oem and lang == "de" and any(k in pub_lower for k in ["bosch", "volkswagen", "audi", "vag"]):
+            is_oem = True
+        if is_oem:
+            oem_native_count += 1
 
     domains = [
         ("01_engine_physics", "1. Engine fundamentals"),
@@ -117,8 +200,17 @@ def generate_index_markdown():
     md.append(f"- **Total Unique Downloaded Documents**: {total_downloaded}")
     md.append(f"- **Born-Digital / Searchable Text Layer (YES)**: {text_layer_count}")
     md.append(f"- **Scanned / OCR Needed (NO)**: {scanned_count}")
+    
     tier_str = ", ".join([f"{k}: {v}" for k, v in sorted(tier_counts.items())])
     md.append(f"- **Tier Breakdown**: {tier_str if tier_str else 'None'}")
+    
+    lang_str_items = []
+    for l_code, count in sorted(lang_counts.items(), key=lambda x: -x[1]):
+        badge = LANG_BADGES.get(l_code, l_code.upper())
+        lang_str_items.append(f"{badge}: {count}")
+    md.append(f"- **Linguistic Corpus Distribution**: {', '.join(lang_str_items)}")
+    md.append(f"- **German OEM Native Ground Truth (Bosch / VAG)**: {oem_native_count} verified documents")
+    
     md.append(f"- **Identified Open Gaps**: {len(gaps)}")
     md.append(f"- **WANT_USER_COPY (Proprietary / Closed)**: {len(wants)}")
     md.append("")
@@ -134,8 +226,8 @@ def generate_index_markdown():
     md.append("")
     md.append("## Catalog of Downloaded Documents")
     md.append("")
-    md.append("| # | Title | Author(s) | Year | Pages | Tier | Text Layer | Folder / File |")
-    md.append("|---|---|---|---|---|---|---|---|")
+    md.append("| # | Title | Author(s) | Year | Pages | Tier | Lang | Text Layer | Folder / File |")
+    md.append("|---|---|---|---|---|---|---|---|---|")
     for idx, r in enumerate(records, 1):
         rel_path = os.path.join(r.get("folder", ""), r.get("filename", "")).replace("\\", "/")
         title = r.get("title", "Unknown").replace("|", "-")
@@ -144,7 +236,26 @@ def generate_index_markdown():
         pages = r.get("pages", "N/A")
         tier = r.get("authority_tier", "Tier B")
         tl = r.get("text_layer", "YES")
-        md.append(f"| {idx} | **{title}** | {authors} | {year} | {pages} | {tier} | {tl} | [`{rel_path}`]({rel_path}) |")
+        
+        lang_code = r.get("original_language") or r.get("language", "en")
+        is_oem = r.get("is_oem_native", False)
+        pub_lower = str(r.get("publisher", "")).lower()
+        if not is_oem and lang_code == "de" and any(k in pub_lower for k in ["bosch", "volkswagen", "audi", "vag"]):
+            is_oem = True
+            
+        badge = LANG_BADGES.get(lang_code, lang_code.upper())
+        if is_oem:
+            lang_display = f"{badge} **[OEM]**"
+        else:
+            lang_display = badge
+
+        prov = r.get("translation_provenance")
+        if prov and isinstance(prov, dict):
+            src_ed = prov.get("source_edition", "")
+            if src_ed:
+                title = f"{title} *(Trans. of {src_ed})*"
+
+        md.append(f"| {idx} | **{title}** | {authors} | {year} | {pages} | {tier} | {lang_display} | {tl} | [`{rel_path}`]({rel_path}) |")
 
     if wants:
         md.append("")
@@ -156,7 +267,8 @@ def generate_index_markdown():
             item_title = w.get("title", "").replace("|", "-")
             reason = w.get("reason", "").replace("|", "-")
             target = w.get("target", "").replace("|", "-")
-            md.append(f"| **{item_title}** | {reason} | {target} | User Input Requested |")
+            status = w.get("status", "User Input Requested").replace("|", "-")
+            md.append(f"| **{item_title}** | {reason} | {target} | {status} |")
 
     if gaps:
         md.append("")
@@ -187,7 +299,13 @@ def download_document(
     language: str = "en",
     notes: str = "",
     applicability: str = "General / VW PD EDC16",
-    timeout: int = 50
+    timeout: int = 50,
+    original_language: str = "en",
+    canonical_title: str = "",
+    translation_provenance: Optional[Dict[str, Any]] = None,
+    is_oem_native: bool = False,
+    isbn_multilingual: Optional[Dict[str, str]] = None,
+    edition_number: str = ""
 ) -> Optional[Dict[str, Any]]:
     target_dir = os.path.join(LIBRARY_DIR, folder)
     os.makedirs(target_dir, exist_ok=True)
@@ -274,6 +392,12 @@ def download_document(
         "publisher": publisher,
         "doc_id": doc_id,
         "language": language,
+        "original_language": original_language or language,
+        "canonical_title": canonical_title or title,
+        "edition_number": edition_number,
+        "is_oem_native": is_oem_native,
+        "translation_provenance": translation_provenance,
+        "isbn_multilingual": isbn_multilingual or {},
         "pages": num_pages,
         "source_url": url,
         "file_format": fmt,
@@ -303,12 +427,15 @@ def add_gap(topic: str, document: str):
     save_registry(reg)
     generate_index_markdown()
 
-def add_want_user_copy(title: str, reason: str, target: str):
+def add_want_user_copy(title: str, reason: str, target: str, status: str = "User Input Requested"):
     reg = load_registry()
     for w in reg.get("want_user_copy", []):
         if w.get("title") == title:
+            w["status"] = status
+            save_registry(reg)
+            generate_index_markdown()
             return
-    reg["want_user_copy"].append({"title": title, "reason": reason, "target": target})
+    reg["want_user_copy"].append({"title": title, "reason": reason, "target": target, "status": status})
     save_registry(reg)
     generate_index_markdown()
 
@@ -326,7 +453,13 @@ def register_local_file(
     language: str = "en",
     notes: str = "",
     applicability: str = "General / VW PD EDC16",
-    copy_file: bool = True
+    copy_file: bool = True,
+    original_language: str = "en",
+    canonical_title: str = "",
+    translation_provenance: Optional[Dict[str, Any]] = None,
+    is_oem_native: bool = False,
+    isbn_multilingual: Optional[Dict[str, str]] = None,
+    edition_number: str = ""
 ) -> Optional[Dict[str, Any]]:
     target_dir = os.path.join(LIBRARY_DIR, folder)
     os.makedirs(target_dir, exist_ok=True)
@@ -387,6 +520,12 @@ def register_local_file(
         "publisher": publisher,
         "doc_id": doc_id,
         "language": language,
+        "original_language": original_language or language,
+        "canonical_title": canonical_title or title,
+        "edition_number": edition_number,
+        "is_oem_native": is_oem_native,
+        "translation_provenance": translation_provenance,
+        "isbn_multilingual": isbn_multilingual or {},
         "pages": num_pages,
         "source_url": f"local://{os.path.basename(source_path)}",
         "file_format": fmt,
@@ -408,4 +547,19 @@ def register_local_file(
     return record
 
 if __name__ == "__main__":
-    generate_index_markdown()
+    if len(sys.argv) > 1:
+        cmd = sys.argv[1].lower()
+        if cmd == "index":
+            generate_index_markdown()
+        elif cmd == "query" and len(sys.argv) > 2:
+            q_res = expand_multilingual_queries(sys.argv[2])
+            print(json.dumps(q_res, ensure_ascii=False, indent=2))
+        elif cmd == "stats":
+            data = load_registry()
+            print(f"Total Records: {len(data.get('records', []))}")
+            print(f"Gaps: {len(data.get('gaps', []))}")
+            print(f"Wants: {len(data.get('want_user_copy', []))}")
+        else:
+            print("Usage: python curator.py [index|stats|query <topic_key>]")
+    else:
+        generate_index_markdown()
