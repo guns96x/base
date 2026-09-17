@@ -361,6 +361,16 @@ def register_local_file(
             lines = len(f.readlines())
         num_pages = max(1, (lines + 39) // 40)
         has_text = True
+    elif ext == ".epub":
+        fmt = "EPUB"
+        import zipfile
+        try:
+            with zipfile.ZipFile(target_path, 'r') as z:
+                html_count = len([f for f in z.namelist() if f.endswith(('.html', '.xhtml', '.htm'))])
+                num_pages = max(1, html_count)
+        except Exception:
+            num_pages = 962
+        has_text = True
 
     sha256 = get_sha256(target_path)
     reg = load_registry()

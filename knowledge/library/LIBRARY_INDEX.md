@@ -4,10 +4,10 @@ Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, and 
 
 ## Executive Corpus Summary
 
-- **Total Unique Downloaded Documents**: 89
-- **Born-Digital / Searchable Text Layer (YES)**: 88
+- **Total Unique Downloaded Documents**: 90
+- **Born-Digital / Searchable Text Layer (YES)**: 89
 - **Scanned / OCR Needed (NO)**: 1
-- **Tier Breakdown**: Tier A: 71, Tier B: 17, Tier C: 1
+- **Tier Breakdown**: Tier A: 72, Tier B: 17, Tier C: 1
 - **Identified Open Gaps**: 1
 - **WANT_USER_COPY (Proprietary / Closed)**: 7
 
@@ -15,7 +15,7 @@ Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, and 
 
 | Domain Directory | Topic Name | Verified Docs | Coverage Status |
 |---|---|---|---|
-| `01_engine_physics` | 1. Engine fundamentals | 6 | 🟢 Strong |
+| `01_engine_physics` | 1. Engine fundamentals | 7 | 🟢 Strong |
 | `02_diesel_combustion` | 2. Diesel combustion | 4 | 🟢 Strong |
 | `03_injection` | 3. Diesel injection | 4 | 🟢 Strong |
 | `04_pumpe_duse` | 4. Pumpe-Düse / UIS | 5 | 🟢 Strong |
@@ -126,6 +126,7 @@ Autonomous corpus of professional literature, textbooks, OEM manuals, SSPs, and 
 | 87 | **Ross-Tech VCDS & VAS Diagnostic Engineering Guide: VAG 1.9 TDI PD (EDC16U34)** | Ross-Tech & VAG Diagnostic Engineering | 2026 | 5 | Tier A | YES | [`12_vcds/Ross_Tech_VCDS_EDC16U34_Measuring_Blocks_and_Diagnostics_Guide.md`](12_vcds/Ross_Tech_VCDS_EDC16U34_Measuring_Blocks_and_Diagnostics_Guide.md) |
 | 88 | **Internal Combustion Engine Fundamentals (Complete 1st Edition)** | John B. Heywood (MIT) | 1988 | 481 | Tier A | NO | [`01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Complete.pdf`](01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Complete.pdf) |
 | 89 | **Internal Combustion Engine Fundamentals (Digitized Edition with Text Layer & Interactive TOC)** | John B. Heywood (MIT) | 1988 | 1382 | Tier A | YES | [`01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Digital_Text.pdf`](01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals_Digital_Text.pdf) |
+| 90 | **Internal Combustion Engine Fundamentals (Official Full EPUB Edition)** | John B. Heywood (MIT) | 1988 | 964 | Tier A | YES | [`01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals.epub`](01_engine_physics/Heywood_1988_Internal_Combustion_Engine_Fundamentals.epub) |
 
 ## WANT_USER_COPY (Proprietary / Commercial / Closed Sources)
 

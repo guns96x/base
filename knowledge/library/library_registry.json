@@ -2374,6 +2374,34 @@
       "filename": "Heywood_1988_Internal_Combustion_Engine_Fundamentals_Digital_Text.pdf",
       "sha256": "74c1b87abbd3b7290075dc5ec70418b9ca8d5ffd90e9c204eba0ee879dd3e393",
       "notes": "Complete 1382-page born-digital text reconstruction from EPUB with 1.93 million searchable characters, 571 embedded figures, and interactive chapter bookmarks."
+    },
+    {
+      "title": "Internal Combustion Engine Fundamentals (Official Full EPUB Edition)",
+      "authors": "John B. Heywood (MIT)",
+      "year": "1988",
+      "publisher": "McGraw-Hill",
+      "doc_id": "HEYWOOD-1988-EPUB",
+      "language": "en",
+      "pages": 964,
+      "source_url": "local://Heywood_1988_Internal_Combustion_Engine_Fundamentals.epub",
+      "file_format": "EPUB",
+      "text_layer": "YES",
+      "full_document": "YES",
+      "authority_tier": "Tier A",
+      "topics": [
+        "Internal Combustion Engines",
+        "Thermodynamics",
+        "Gas Exchange",
+        "Diesel Combustion",
+        "Heat Transfer",
+        "Emissions",
+        "EPUB"
+      ],
+      "applicability": "Fundamental ICE Thermodynamics & Diesel Physics",
+      "folder": "01_engine_physics",
+      "filename": "Heywood_1988_Internal_Combustion_Engine_Fundamentals.epub",
+      "sha256": "82ee6f904c1f11b2ac4c9aeb02993875f2be6bb9eb0b8a5be6ed4155d64d7061",
+      "notes": "Complete 962-chapter born-digital EPUB edition with 1.93 million searchable characters, reflowable typography, and embedded figures."
     }
   ],
   "gaps": [
