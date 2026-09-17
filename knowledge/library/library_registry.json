@@ -2402,6 +2402,33 @@
       "filename": "Heywood_1988_Internal_Combustion_Engine_Fundamentals.epub",
       "sha256": "82ee6f904c1f11b2ac4c9aeb02993875f2be6bb9eb0b8a5be6ed4155d64d7061",
       "notes": "Complete 962-chapter born-digital EPUB edition with 1.93 million searchable characters, reflowable typography, and embedded figures."
+    },
+    {
+      "title": "Heywood Mathematical Formulary: Internal Combustion Engine Fundamentals (1988)",
+      "authors": "John B. Heywood (MIT Sloan Automotive Lab), verified by Antigravity",
+      "year": "1988",
+      "publisher": "McGraw-Hill / MIT Sloan Automotive Laboratory",
+      "doc_id": "HEYWOOD-FORMULARY-1988",
+      "language": "en",
+      "pages": 17,
+      "source_url": "local://Heywood_Mathematical_Formulary.md",
+      "file_format": "Markdown",
+      "text_layer": "YES",
+      "full_document": "YES",
+      "authority_tier": "Tier A",
+      "topics": [
+        "Engine fundamentals",
+        "Thermodynamic cycles",
+        "Volumetric efficiency",
+        "Combustion physics",
+        "Ignition delay",
+        "ECU calibration math"
+      ],
+      "applicability": "Core Engine Physics & ECU Thermodynamic Models",
+      "folder": "01_engine_physics",
+      "filename": "Heywood_Mathematical_Formulary.md",
+      "sha256": "c8c7471b4dae29dd6fc5fa32c8c7f54d7440cc200da67391b4ac09aad56294e1",
+      "notes": "Canonical mathematical reference layer for John B. Heywood ICE Fundamentals (1988). 100% visually verified against the 1988 printed scan sheets across 12 thermodynamic domains with SI units, dimensional derivations, boundary assumptions, and ECU calibration failure modes."
     }
   ],
   "gaps": [
